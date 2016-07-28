@@ -1,8 +1,8 @@
 # BuildAzure.IoT.Adafruit.BME280
-An Adafruit BME280 (Pressure, Temp &amp; Humidity) Sensor library for Windows IoT Core
+An [Adafruit BME280 (Pressure, Temp &amp; Humidity) Sensor](https://learn.adafruit.com/adafruit-bme280-humidity-barometric-pressure-temperature-sensor-breakout) library for Windows IoT Core
 
 ### Wiring Diagram
-Here's a simple Fritzing diagram that shows the expected wiring of the Adafruit BME280 sensor with a Raspberry Pi 2 or 3:
+Here's a simple Fritzing diagram that shows the expected wiring of the [Adafruit BME280 sensor](https://learn.adafruit.com/adafruit-bme280-humidity-barometric-pressure-temperature-sensor-breakout) with a Raspberry Pi 2 or 3:
 
 ![BMD280 Raspberry Pi Wiring Diagram](BME280Fritzing.png)
 
