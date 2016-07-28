@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>BuildAzure.IoT.Adafruit.BME280</id>
-    <version>1.0.0.0</version>
+    <version>1.0.0.1</version>
     <title>BuildAzure.IoT.Adafruit.BME280</title>
     <authors>BuildAzure.com</authors>
     <owners>Chris Pietschmann</owners>

@@ -293,7 +293,7 @@ namespace BuildAzure.IoT.Adafruit.BME280
             return (float)temp;
         }
 
-        public async Task<float> ReadPreasure()
+        public async Task<float> ReadPressure()
         {
             //Make sure the I2C device is initialized
             if (!init) await Begin();
@@ -338,7 +338,7 @@ namespace BuildAzure.IoT.Adafruit.BME280
             if (!init) await Begin();
 
             //Read the pressure first
-            float pressure = await ReadPreasure();
+            float pressure = await ReadPressure();
             //Convert the pressure to Hectopascals(hPa)
             pressure /= 100;
 
