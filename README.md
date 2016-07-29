@@ -4,6 +4,26 @@ An [Adafruit BME280 (Pressure, Temp &amp; Humidity) Sensor](https://learn.adafru
 ### Nuget Package
 [![BuildAzure.IoT.Adafruit.BME280 Nuget Package](NugetCommand.png)](https://www.nuget.org/packages/BuildAzure.IoT.Adafruit.BME280)
 
+### C# Usage
+
+    var bme280Sensor = new BME280Sensor();
+
+    // Initialize BME280 Sensor
+    await bme280Sensor.Initialize();
+
+    // Read Temperature
+    var temp = bme280Sensor.ReadTemperature();
+
+    // Read Humidity
+    var humidity = bme280Sensor.ReadHumidity();
+
+    // Read Barometric Pressure
+    var pressure = bme280Sensor.ReadPressure();
+
+    // Read Altitude
+    const float seaLevelBarometricPressure = 1022.00f;
+    var altitude = bmd280Sensor.ReadAltitude(seaLevelBarometricPressure);
+
 ### Wiring Diagram
 Here's a simple Fritzing diagram that shows the expected wiring of the [Adafruit BME280 sensor](https://learn.adafruit.com/adafruit-bme280-humidity-barometric-pressure-temperature-sensor-breakout) with a Raspberry Pi 2 or 3:
 
