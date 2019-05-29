@@ -297,19 +297,14 @@ namespace BuildAzure.IoT.Adafruit.BME280
                 (byte)eRegisters.BME280_REGISTER_CONTROL, (byte) _measReg.Get()
             };
             bme280.Write(WriteBuffer1);
-            Debug.WriteLine("  written buffer1");
             bme280.Write(WriteBuffer2);
-            Debug.WriteLine("  written buffer2");
             bme280.Write(WriteBuffer3);
-            Debug.WriteLine("  written buffer3");
 
             await Task.Delay(1);
-            return;
         }
 
         public async Task TakeForcedMeasurement()
         {
-            Debug.WriteLine("BME280: TakeForcedMeasurement");
             // If we are in forced mode, the BME sensor goes back to sleep after each
             // measurement and we need to set it to forced mode once at this point, so
             // it will take the next measurement and then return to sleep again.
@@ -325,7 +320,6 @@ namespace BuildAzure.IoT.Adafruit.BME280
                 {
                     await Task.Delay(1);
                 }
-                Debug.WriteLine("   Ok"); 
             }
         }
 
@@ -529,5 +523,15 @@ namespace BuildAzure.IoT.Adafruit.BME280
             //Calculate and return the altitude using the international barometric formula
             return 44330.0f * (1.0f - (float)Math.Pow((pressure / seaLevel), 0.1903f));
         }
+
+        // Calculates the pressure at sea level (in hPa) from the specified altitude (in meters) and atmospheric pressure (in hPa).  
+        public float SeaLevelForAltitude(float altitude, float atmospheric)
+        {
+            // Equation taken from BMP180 datasheet (page 17):
+            // https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BMP180-DS000.pdf
+
+            return atmospheric / (float)Math.Pow(1.0 - (altitude / 44330.0f), 5.255f);
+        }
+
     }
 }
