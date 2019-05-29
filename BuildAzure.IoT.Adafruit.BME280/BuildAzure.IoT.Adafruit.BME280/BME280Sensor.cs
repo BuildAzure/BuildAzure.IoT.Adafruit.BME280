@@ -9,7 +9,49 @@ using Windows.Devices.I2c;
 
 namespace BuildAzure.IoT.Adafruit.BME280
 {
-    public class BME280Sensor
+    // Sampling rates
+    public enum SensorSampling : uint
+    {
+        SAMPLING_NONE = 0b000,
+        SAMPLING_X1 = 0b001,
+        SAMPLING_X2 = 0b010,
+        SAMPLING_X4 = 0b011,
+        SAMPLING_X8 = 0b100,
+        SAMPLING_X16 = 0b101
+    };
+
+    // Power modes
+    public enum SensorMode : uint
+    {
+        MODE_SLEEP = 0b00,
+        MODE_FORCED = 0b01,
+        MODE_NORMAL = 0b11
+    };
+
+    // Filter values
+    public enum SensorFilter : uint
+    {
+        FILTER_OFF = 0b000,
+        FILTER_X2 = 0b001,
+        FILTER_X4 = 0b010,
+        FILTER_X8 = 0b011,
+        FILTER_X16 = 0b100
+    };
+
+    // Standby duration in ms
+    public enum StandbyDuration : uint
+    {
+        STANDBY_MS_0_5 = 0b000,
+        STANDBY_MS_10 = 0b110,
+        STANDBY_MS_20 = 0b111,
+        STANDBY_MS_62_5 = 0b001,
+        STANDBY_MS_125 = 0b010,
+        STANDBY_MS_250 = 0b011,
+        STANDBY_MS_500 = 0b100,
+        STANDBY_MS_1000 = 0b101
+    };
+
+    public class BME280Sensor : IDisposable
     {
         //The BME280 register addresses according the the datasheet: http://www.adafruit.com/datasheets/BST-BME280-DS001-11.pdf
         const byte BME280_Address = 0x77;
@@ -45,6 +87,7 @@ namespace BuildAzure.IoT.Adafruit.BME280
             BME280_REGISTER_CAL26 = 0xE1,  // R calibration stored in 0xE1-0xF0
 
             BME280_REGISTER_CONTROLHUMID = 0xF2,
+            BME280_REGISTER_STATUS = 0XF3,
             BME280_REGISTER_CONTROL = 0xF4,
             BME280_REGISTER_CONFIG = 0xF5,
 
@@ -60,6 +103,91 @@ namespace BuildAzure.IoT.Adafruit.BME280
             BME280_REGISTER_HUMIDDATA_LSB = 0xFE,
         };
 
+        // The config register
+        struct Config
+        {
+            // inactive duration (standby time) in normal mode
+            // 000 = 0.5 ms
+            // 001 = 62.5 ms
+            // 010 = 125 ms
+            // 011 = 250 ms
+            // 100 = 500 ms
+            // 101 = 1000 ms
+            // 110 = 10 ms
+            // 111 = 20 ms
+            public uint t_sb; //3bits
+
+            // filter settings
+            // 000 = filter off
+            // 001 = 2x filter
+            // 010 = 4x filter
+            // 011 = 8x filter
+            // 100 and above = 16x filter
+            public uint filter; //3bits
+
+            public uint Get()
+            {
+                return ((t_sb&0x7) << 5) | ((filter&0x7) << 2);
+            }
+        };
+        Config _configReg;
+
+
+        // The ctrl_meas register
+        struct CtrlMeas
+        {
+            // temperature oversampling
+            // 000 = skipped
+            // 001 = x1
+            // 010 = x2
+            // 011 = x4
+            // 100 = x8
+            // 101 and above = x16
+            public uint osrs_t;// 3bits;
+
+            // pressure oversampling
+            // 000 = skipped
+            // 001 = x1
+            // 010 = x2
+            // 011 = x4
+            // 100 = x8
+            // 101 and above = x16
+            public uint osrs_p; //3bits;
+
+            // device mode
+            // 00       = sleep
+            // 01 or 10 = forced
+            // 11       = normal
+            public uint mode; //2bits;
+
+            public uint Get()
+            {
+                return ((osrs_t&0x7) << 5) | ((osrs_p&0x7) << 2) | (mode&0x3);
+            }
+        };
+        CtrlMeas _measReg;
+
+
+        // The ctrl_hum register
+        struct CtrlHum
+        {
+             // pressure oversampling
+            // 000 = skipped
+            // 001 = x1
+            // 010 = x2
+            // 011 = x4
+            // 100 = x8
+            // 101 and above = x16
+            public uint osrs_h; //3bits;
+
+            public uint Get()
+            {
+                return osrs_h&0x7;
+            }
+        };
+        CtrlHum _humReg;
+
+
         //String for the friendly name of the I2C bus 
         const string I2CControllerName = "I2C1";
         //Create an I2C device
@@ -69,15 +197,19 @@ namespace BuildAzure.IoT.Adafruit.BME280
         //Variable to check if device is initialized
         bool init = false;
 
+        public async Task<bool> Initialize()
+        {
+            return await Initialize(BME280_Address);
+        }
         //Method to initialize the BME280 sensor
-        public async Task Initialize()
+        public async Task<bool> Initialize(byte address)
         {
             Debug.WriteLine("BME280::Initialize");
-
+            bool ok = false;
             try
             {
                 //Instantiate the I2CConnectionSettings using the device address of the BME280
-                I2cConnectionSettings settings = new I2cConnectionSettings(BME280_Address);
+                I2cConnectionSettings settings = new I2cConnectionSettings(address);
                 //Set the I2C bus speed of connection to fast mode
                 settings.BusSpeed = I2cBusSpeed.FastMode;
                 //Use the I2CBus device selector to create an advanced query syntax string
@@ -90,6 +222,10 @@ namespace BuildAzure.IoT.Adafruit.BME280
                 if (bme280 == null)
                 {
                     Debug.WriteLine("Device not found");
+                } else
+                {
+                    await Begin();
+                    ok = true;
                 }
             }
             catch (Exception e)
@@ -97,6 +233,7 @@ namespace BuildAzure.IoT.Adafruit.BME280
                 Debug.WriteLine("Exception: " + e.Message + "\n" + e.StackTrace);
                 throw;
             }
+            return ok;
 
         }
         private async Task Begin()
@@ -122,30 +259,69 @@ namespace BuildAzure.IoT.Adafruit.BME280
             //Read the coefficients table
             CalibrationData = await ReadCoefficeints();
 
-            //Write control register
-            await WriteControlRegister();
+            //Set default mode
+            await SetSampling(SensorMode.MODE_NORMAL,
+                SensorSampling.SAMPLING_X16,
+                SensorSampling.SAMPLING_X16,
+                SensorSampling.SAMPLING_X16,
+                SensorFilter.FILTER_OFF,
+                StandbyDuration.STANDBY_MS_0_5
+             );
 
-            //Write humidity control register
-            await WriteControlRegisterHumidity();
         }
 
-        //Method to write 0x03 to the humidity control register
-        private async Task WriteControlRegisterHumidity()
+        //BME280 allows various modes. See chapter 3.5 "Recommended modes of operation" in the datasheet
+        public async Task SetSampling(SensorMode mode, SensorSampling tempSampling, SensorSampling pressSampling,
+                                       SensorSampling humSampling, SensorFilter filter, StandbyDuration duration)
         {
-            byte[] WriteBuffer = new byte[] { (byte)eRegisters.BME280_REGISTER_CONTROLHUMID, 0x03 };
-            bme280.Write(WriteBuffer);
+            Debug.WriteLine("BME280: Set sampling");
+            _measReg.mode = (uint)mode;
+            _measReg.osrs_t = (uint)tempSampling;
+            _measReg.osrs_p = (uint)pressSampling;
+
+
+            _humReg.osrs_h = (uint) humSampling;
+            _configReg.filter = (uint) filter;
+            _configReg.t_sb = (uint) duration;
+
+
+            // you must make sure to also set REGISTER_CONTROL after setting the
+            // CONTROLHUMID register, otherwise the values won't be applied (see DS 5.4.3)
+            byte[] WriteBuffer1 = new byte[] {
+                (byte)eRegisters.BME280_REGISTER_CONTROLHUMID, (byte)_humReg.Get() };
+            byte[] WriteBuffer2 = new byte[] {
+                (byte)eRegisters.BME280_REGISTER_CONFIG, (byte) _configReg.Get() };
+            byte[] WriteBuffer3 = new byte[] {
+                (byte)eRegisters.BME280_REGISTER_CONTROL, (byte) _measReg.Get()
+            };
+            bme280.Write(WriteBuffer1);
+            bme280.Write(WriteBuffer2);
+            bme280.Write(WriteBuffer3);
+
             await Task.Delay(1);
-            return;
         }
 
-        //Method to write 0x3F to the control register
-        private async Task WriteControlRegister()
+        public async Task TakeForcedMeasurement()
         {
-            byte[] WriteBuffer = new byte[] { (byte)eRegisters.BME280_REGISTER_CONTROL, 0x3F };
-            bme280.Write(WriteBuffer);
-            await Task.Delay(1);
-            return;
+            // If we are in forced mode, the BME sensor goes back to sleep after each
+            // measurement and we need to set it to forced mode once at this point, so
+            // it will take the next measurement and then return to sleep again.
+            // In normal mode simply does new measurements periodically.
+            if (_measReg.mode == (uint)SensorMode.MODE_FORCED)
+            {
+                // set to forced mode, i.e. "take next measurement"
+                byte[] WriteBuffer = new byte[] { (byte)eRegisters.BME280_REGISTER_CONTROL, (byte)_measReg.Get() };
+                bme280.Write(WriteBuffer);
+                // wait until measurement has been completed, otherwise we would read
+                // the values from the last measurement
+                while ((ReadByte((byte)eRegisters.BME280_REGISTER_STATUS) & 0x08) != 0)
+                {
+                    await Task.Delay(1);
+                }
+            }
         }
+
+
 
         //Method to read a 16-bit value from a register and return it in little endian format
         private UInt16 ReadUInt16_LittleEndian(byte register)
@@ -345,5 +521,20 @@ namespace BuildAzure.IoT.Adafruit.BME280
             //Calculate and return the altitude using the international barometric formula
             return 44330.0f * (1.0f - (float)Math.Pow((pressure / seaLevel), 0.1903f));
         }
+
+        // Calculates the pressure at sea level (in hPa) from the specified altitude (in meters) and atmospheric pressure (in hPa).  
+        public float SeaLevelForAltitude(float altitude, float atmospheric)
+        {
+            // Equation taken from BMP180 datasheet (page 17):
+            // https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BMP180-DS000.pdf
+
+            return atmospheric / (float)Math.Pow(1.0 - (altitude / 44330.0f), 5.255f);
+        }
+
+        public void Dispose()
+        {
+            bme280.Dispose();
+        }
+
     }
 }
