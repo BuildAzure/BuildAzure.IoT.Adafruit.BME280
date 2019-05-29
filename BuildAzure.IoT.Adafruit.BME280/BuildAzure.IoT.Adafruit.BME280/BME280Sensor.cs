@@ -125,11 +125,9 @@ namespace BuildAzure.IoT.Adafruit.BME280
             // 100 and above = 16x filter
             public uint filter; //3bits
 
-            public uint spi3w_en; //1bit
-
             public uint Get()
             {
-                return ((t_sb&0x7) << 5) | ((filter&0x7) << 2) | (spi3w_en&0x1);
+                return ((t_sb&0x7) << 5) | ((filter&0x7) << 2);
             }
         };
         Config _configReg;
