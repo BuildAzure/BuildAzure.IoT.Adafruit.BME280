@@ -51,7 +51,7 @@ namespace BuildAzure.IoT.Adafruit.BME280
         STANDBY_MS_1000 = 0b101
     };
 
-    public class BME280Sensor
+    public class BME280Sensor : IDisposable
     {
         //The BME280 register addresses according the the datasheet: http://www.adafruit.com/datasheets/BST-BME280-DS001-11.pdf
         const byte BME280_Address = 0x77;
@@ -529,6 +529,11 @@ namespace BuildAzure.IoT.Adafruit.BME280
             // https://ae-bst.resource.bosch.com/media/_tech/media/datasheets/BST-BMP180-DS000.pdf
 
             return atmospheric / (float)Math.Pow(1.0 - (altitude / 44330.0f), 5.255f);
+        }
+
+        public void Dispose()
+        {
+            bme280.Dispose();
         }
 
     }
